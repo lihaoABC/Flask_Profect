@@ -7,6 +7,9 @@ import redis
 from flask_wtf.csrf import CSRFProtect
 # 利用flask-session拓展，将session数据保存在redis中
 from flask_session import Session
+# flask_script与数据库迁移拓展
+from flask_script import Manager
+from flask_migrate import MigrateCommand, Migrate
 
 
 app = Flask(__name__)
@@ -42,6 +45,10 @@ redis_store = redis.StrictRedis(host=Config.REDIS_HOST, port=Config.REDIS_PORT)
 CSRFProtect(app) # cookie中的csrf_token以及表单中的csrf_token需要手动实现
 # session实例
 Session(app)
+# 数据库迁移
+manager = Manager(app)
+Migrate(app, db)
+manager.add_command('db', MigrateCommand)
 
 
 @app.route('/index')
@@ -50,4 +57,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run()
+    manager.run()
