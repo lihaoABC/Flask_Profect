@@ -11,6 +11,8 @@ from config import config
 import logging
 from logging.handlers import RotatingFileHandler
 
+
+
 db = SQLAlchemy()
 redis_store = None
 
@@ -26,6 +28,10 @@ def create_app(config_name):
     CSRFProtect(app)  # cookie中的csrf_token以及表单中的csrf_token需要手动实现
     # session实例
     Session(app)
+
+    # 注册蓝图
+    from info.modules.index import index_blue
+    app.register_blueprint(index_blue)
     return app
 
 
