@@ -1,11 +1,14 @@
 import redis
+import logging
 
 
 # Config类
 class Config(object):
     """工程配置信息"""
-    # DEBUG = True
+    # 设置密钥
     SECRET_KEY = 'TgmL5kH7QEhnStpDZcpvvo1ip+4JJ3ovnGV9QmEqJwo='
+    # 设置日志默认等级
+    LOG_LEVEL = logging.DEBUG
 
     # 数据库的配置信息
     SQLALCHEMY_DATABASE_URI = 'mysql://root:123456@localhost/information_F'
@@ -27,7 +30,7 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    DEBUG = False
+    LOG_LEVEL = logging.ERROR
 
 
 config = {
