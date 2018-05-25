@@ -4,7 +4,7 @@ import redis
 # Config类
 class Config(object):
     """工程配置信息"""
-    DEBUG = True
+    # DEBUG = True
     SECRET_KEY = 'TgmL5kH7QEhnStpDZcpvvo1ip+4JJ3ovnGV9QmEqJwo='
 
     # 数据库的配置信息
@@ -20,3 +20,17 @@ class Config(object):
     SESSION_USE_SIGNER = True           # 让cookie中的session——id 被加密签名处理
     SESSION_REDIS = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)  # 使用redis实例
     PERMANENT_SESSION_LIFETIME = 86400  # session有效期，单位是秒
+
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+
+
+class ProductionConfig(Config):
+    DEBUG = False
+
+
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig
+}
