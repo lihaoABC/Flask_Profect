@@ -2,7 +2,7 @@
 from flask import Blueprint
 
 # 2创建蓝图对象
-index_blue = Blueprint("view", __name__)
+index_blue = Blueprint("index", __name__)
 
 # 3导入子模块
 from . import views

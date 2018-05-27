@@ -23,15 +23,18 @@ def create_app(config_name):
     app.config.from_object(config[config_name])
     db.init_app(app)
     global redis_store
-    redis_store = redis.StrictRedis(host=config[config_name].REDIS_HOST, port=config[config_name].REDIS_PORT)
+    redis_store = redis.StrictRedis(host=config[config_name].REDIS_HOST, port=config[config_name].REDIS_PORT, decode_responses=True)
     # 只做验证工作
-    CSRFProtect(app)  # cookie中的csrf_token以及表单中的csrf_token需要手动实现
+    # CSRFProtect(app)  # cookie中的csrf_token以及表单中的csrf_token需要手动实现
     # session实例
     Session(app)
 
     # 6注册蓝图
     from info.modules.index import index_blue
     app.register_blueprint(index_blue)
+
+    from info.modules.passport import passport_blue
+    app.register_blueprint(passport_blue)
 
     return app
 
