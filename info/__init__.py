@@ -1,16 +1,16 @@
+import redis
+import logging
+
 from flask import Flask
 # 导入数据库拓展，并添加相关配置
 from flask_sqlalchemy import SQLAlchemy
 # 导入redis数据库拓展，添加相关配置
-import redis
 # csrf
 from flask_wtf.csrf import CSRFProtect
 # 利用flask-session拓展，将session数据保存在redis中
 from flask_session import Session
 from config import config
-import logging
 from logging.handlers import RotatingFileHandler
-
 
 
 db = SQLAlchemy()
@@ -29,9 +29,10 @@ def create_app(config_name):
     # session实例
     Session(app)
 
-    # 注册蓝图
+    # 6注册蓝图
     from info.modules.index import index_blue
     app.register_blueprint(index_blue)
+
     return app
 
 
