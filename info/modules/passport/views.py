@@ -1,6 +1,8 @@
 # 3.1 导入蓝图对象
 import random
 import re
+from datetime import datetime
+
 from flask import request, make_response, current_app, jsonify, session
 
 from info import redis_store, constants, db
@@ -195,3 +197,58 @@ def register():
     return jsonify(errno=RET.OK, errmsg="OK")
 
 
+# 接口设计
+"""
+URL：/passport/login
+请求方式：POST
+传入参数：JSON格式
+参数：mobile, password
+"""
+
+@passport_blue.route('/login', methods=["POST"])
+def login():
+    """
+    1. 获取参数和判断是否有值
+    2. 从数据库查询出指定的用户
+    3. 校验密码
+    4. 保存用户登录状态
+    5. 返回结果
+    :return:
+    """
+
+    # 1. 获取参数和判断是否有值
+    json_data = request.json
+    mobile = json_data.get('mobile')
+    password = json_data.get('password')
+
+    if not all([mobile, password]):
+        return jsonify(errno=RET.PARAMERR, errmsg='参数不全')
+
+    if not re.match(r'1[3456789]\d{9}', mobile):
+        return jsonify(errno=RET.DATAERR, errmsg="手机号错误")
+
+    # 2. 从数据库查询出指定的用户
+    try:
+        user = User.query.filter_by(mobile=mobile).first()
+
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg='查询数据失败')
+
+    if not user:
+        return jsonify(errno=RET.NODATA, errmsg="用户不存在")
+
+    # 3. 校验密码
+    if not user.check_passowrd(password):
+        return jsonify(errno=RET.PWDERR, errmsg='密码错误')
+
+    # 4. 保存用户登录状态
+    session['user_id'] = user.id
+    session['nick_name'] = user.nick_name
+    session['mobile'] = user.mobile
+
+    # 记录用户最后一次登录时间
+    User.last_login = datetime.now()
+
+    # 5.登录成功
+    return jsonify(errno=RET.OK, errmsg="登录成功")
