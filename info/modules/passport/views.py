@@ -252,3 +252,21 @@ def login():
 
     # 5.登录成功
     return jsonify(errno=RET.OK, errmsg="登录成功")
+
+
+#  登出功能模块
+
+# 逻辑：清除session中的对应登录之后保存的信息
+
+@passport_blue.route('/logout', methods=['POST'])
+def logout():
+    """
+    # 逻辑：清除session中的对应登录之后保存的信息
+
+    :return:
+    """
+    session.pop('user_id', None)
+    session.pop('nick_name', None)
+    session.pop('mobile', None)
+
+    return jsonify(errno=RET.OK, errmsg='登出成功')
