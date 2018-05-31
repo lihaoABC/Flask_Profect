@@ -12,6 +12,7 @@ from flask_session import Session
 from config import config
 from logging.handlers import RotatingFileHandler
 
+from info.libs.common import do_index_class
 
 db = SQLAlchemy()
 redis_store = None
@@ -37,6 +38,9 @@ def create_app(config_name):
         return response
     # session实例
     Session(app)
+
+    # 注册过滤器
+    app.add_template_filter(do_index_class, 'index_class')
 
     # 6注册蓝图
     from info.modules.index import index_blue
