@@ -13,11 +13,38 @@ from . import passport_blue
 from info.utils.captcha.captcha import captcha
 
 
+# 获取图像验证码的路由/接口
+# URL: /passport/image_code?image_code_id=XXXXXXXXXX
+# 参数: image_code_id
+@passport_blue.route('/image_code')
+def get_image_code():
+    # 获取图片验证码
+    # 1. 获取参数ID
+    image_code_id = request.args.get('image_code_id')
+
+    # 2. 生成验证码内容
+    name, text, image_data = captcha.generate_captcha()
+
+    # 3. 保存到redis中 try:
+    try:
+        # 1. redis_store为了有智能提示, 可以增加类型注释
+        # 2. set本身也是可以设置过期时间的, 在参数的第三个位置
+        redis_store.set('Image_code_id_' + image_code_id, text, constants.IMAGE_CODE_REDIS_EXPIRES)
+    except Exception as e:
+        # 记录到日志中
+        current_app.logger.error(e)
+        # 返回一个错误信息 前后端的数据, 采用JSON格式来返回. 可以通知前端局部数据的处理
+        # {'errno': '4001', errmsg:'保存图片验证码失败'}
+        return make_response(jsonify(errno=RET.DBERR, errmsg='保存图片验证码失败'))
+
+    # 4. 返回图像
+    response = make_response(image_data)
+    response.headers['Content-Type'] = 'image/jpg'
+    return response
+
+
 # 3.2 使用蓝图实现路由
-
 # 开发中, 接口的地址和参数是后端人员确定的(也可以和前端商量)
-
-
 """
 获取短信验证码
 URL: 127.0.0.1:5000/passport/sms_code?
@@ -27,7 +54,18 @@ URL: 127.0.0.1:5000/passport/sms_code?
 
 @passport_blue.route('/sms_code', methods=['POST'])
 def get_sms_code():
+    # 发送短信验证码
     # 代码步骤分析
+    """
+        1. 接收参数并判断是否有值
+        2. 校验手机号是正确
+        3. 通过传入的图片编码去redis中查询真实的图片验证码内容
+        4. 进行验证码内容的比对
+        5. 生成发送短信的内容并发送短信
+        6. redis中保存短信验证码内容
+        7. 返回发送成功的响应
+        :return:
+    """
 
     # 一. 获取参数
     # 1. 获取参数(手机号\图像验证码内容, 图像验证码ID)
@@ -51,11 +89,12 @@ def get_sms_code():
     # 3. 先从redis中获取数据(需要判断是否有数据)try
     try:
         real_image_code = redis_store.get('Image_code_id_' + image_code_id)
+        redis_store.delete('Image_code_id_' + image_code_id)
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(errno=RET.DBERR, errmsg='查询数据失败')
 
-    # 要判断redis过期的情况
+    # 3.1 要判断redis过期的情况
     if not real_image_code:
         return jsonify(errno=RET.NODATA, errmsg='验证码已过期')
 
@@ -63,6 +102,15 @@ def get_sms_code():
     if real_image_code.upper() != image_code.upper():
         return jsonify(errno=RET.DATAERR, errmsg='验证码输入错误')
 
+    # 4.1 判断当前用户是否注册
+    try:
+        user = User.query.filter_by(mobile=mobile).first()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg="查询用户出错")
+    if user:
+        # 该手机已被注册
+        return jsonify(errno=RET.DBERR, errmsg='该手机号已被注册')
     # 5. 如果对比一致, 生成验证码的值(第三方只负责发短信 '0000'), 保存到redis中
     # 06d: 以6位返回, 如果不足6位, 以0补齐
     sms_code_str = '%06d' % random.randint(0, 999999)
@@ -84,36 +132,6 @@ def get_sms_code():
     # 四. 返回数据
     # 7. 返回成功的数据
     return jsonify(errno=RET.OK, errmsg='短信验证码发送成功')
-
-
-# 获取图像验证码的路由/接口
-# URL: /passport/image_code?image_code_id=XXXXXXXXXX
-# 参数: image_code_id
-@passport_blue.route('/image_code')
-def get_image_code():
-
-    # 1. 获取参数ID
-    image_code_id = request.args.get('image_code_id')
-
-    # 2. 生成验证码内容
-    name, text, image_data = captcha.generate_captcha()
-
-    # 3. 保存到redis中 try:
-    try:
-        # 1. redis_store为了有智能提示, 可以增加类型注释
-        # 2. set本身也是可以设置过期时间的, 在参数的第三个位置
-        redis_store.set('Image_code_id_' + image_code_id, text, constants.IMAGE_CODE_REDIS_EXPIRES)
-    except Exception as e:
-        # 记录到日志中
-        current_app.logger.error(e)
-        # 返回一个错误信息 前后端的数据, 采用JSON格式来返回. 可以通知前端局部数据的处理
-        # {'errno': '4001', errmsg:'保存图片验证码失败'}
-        return make_response(jsonify(errno=RET.DBERR, errmsg='保存图片验证码失败'))
-
-    # 4. 返回图像
-    response = make_response(image_data)
-    response.headers['Content-Type'] = 'image/jpg'
-    return response
 
 
 # 注册功能
@@ -159,7 +177,7 @@ def register():
         return jsonify(errno=RET.DBERR, errmsg="获取本地验证码失败")
 
     if not real_sms_code:
-        return jsonify(errno=RET.NODATA, errmsg='短信验证码过期')
+        return jsonify(errno=RET.NODATA, errmsg='短信验证码过期或手机号错误')
 
     # 3.验证校验码
 
@@ -172,8 +190,21 @@ def register():
 
     except Exception as e:
         current_app.logger.error(e)
+    # 从逻辑严谨性上来说, 有错误就返回错误信息, 让前端处理.
+    # 从产品经理的角度(用户体验角度), 不要返回错误信息
+    # return jsonify(errno=RET.DBERR, errmsg='数据库查询失败')
 
     # 4. 初始化user、模型， 并设置数据并添加到数据库
+    # 4.1 判断用户是否注册
+    try:
+        user = User.query.filter_by(mobile=mobile).first()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(errno=RET.DBERR, errmsg='查询用户失败')
+    if user:
+        # 该用户已注册
+        return jsonify(errno=RET.DBERR, errmsg="该用户已注册")
+    # 初始化user模型
     user = User()
     user.nick_name = mobile
     user.mobile = mobile
