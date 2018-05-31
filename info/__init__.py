@@ -6,7 +6,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 # 导入redis数据库拓展，添加相关配置
 # csrf
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
 # 利用flask-session拓展，将session数据保存在redis中
 from flask_session import Session
 from config import config
@@ -25,7 +25,16 @@ def create_app(config_name):
     global redis_store
     redis_store = redis.StrictRedis(host=config[config_name].REDIS_HOST, port=config[config_name].REDIS_PORT, decode_responses=True)
     # 只做验证工作
-    # CSRFProtect(app)  # cookie中的csrf_token以及表单中的csrf_token需要手动实现
+    CSRFProtect(app)  # cookie中的csrf_token以及表单中的csrf_token需要手动实现
+
+    # csrf_token校验
+    @app.after_request
+    def after_request(response):
+        # 调用函数生成csrf_token
+        csrf_token = generate_csrf()
+        # 通过cookie将值传给前端
+        response.set_cookie('csrf_token', csrf_token)
+        return response
     # session实例
     Session(app)
 

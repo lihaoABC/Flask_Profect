@@ -4,6 +4,7 @@ from flask_migrate import MigrateCommand, Migrate
 from info import create_app, db, set_log, models
 from config import DevelopmentConfig, ProductionConfig
 
+
 app = create_app('development')
 # 数据库迁移
 manager = Manager(app)

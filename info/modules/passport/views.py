@@ -125,6 +125,7 @@ URL:/passport/register
 参数名：mobile, sms_code, passwprd
 """
 
+
 @passport_blue.route('/register', methods=['POST'])
 def register():
     """
@@ -204,6 +205,7 @@ URL：/passport/login
 传入参数：JSON格式
 参数：mobile, password
 """
+
 
 @passport_blue.route('/login', methods=["POST"])
 def login():
